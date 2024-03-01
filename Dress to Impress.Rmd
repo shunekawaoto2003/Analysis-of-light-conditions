@@ -13,10 +13,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-knitr::include_graphics("unnamed.jpg")
-```
-
 # Initial cleanup of the data
 ```{r, message=FALSE}
 data <- read.csv("newdata.csv")

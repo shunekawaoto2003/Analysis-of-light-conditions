@@ -1,0 +1,72 @@
+---
+title: |
+  <center> The “A” of Statistical Consulting I </center>
+  <center> Mini Workshop </center> 
+  <center> Statistical Consulting for Data Scientists </center>
+author: "Shune Kawaoto, Ryan Largo, Masato Ishizuka, Arielle Davis, Vanda Suklar, John Wu"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+knitr::include_graphics("unnamed.jpg")
+```
+
+# Initial cleanup of the data
+```{r, message=FALSE}
+data <- read.csv("newdata.csv")
+zes <- read.csv("lighting_tall.csv")
+library(tidyverse)
+library(caret)
+library(randomForest)
+library(tinytex)
+zes <- zes %>% separate(subjectLighting, into=c("Subject", "Lighting"), sep=1)
+```
+
+
+# Setting up the data
+```{r, message=FALSE}
+summary(data$Duration..in.seconds.)
+zes <- cbind(zes, data$LocationLatitude, data$LocationLongitude, data$Duration..in.seconds.)
+zes <- zes %>% rename('LocationLatitude' = 'data$LocationLatitude',
+               'LocationLongitude' = 'data$LocationLongitude',
+               'Duration' = 'data$Duration..in.seconds.')
+zes <- zes[,c(-1,-2)]
+summary(zes)
+```
+
+
+# Random forest prediction with accuracy rate of 0.9218
+```{r, message=FALSE}
+# training  = 9000
+# testing = 3000
+set.seed(123)
+sample <- sample(c(TRUE, FALSE), nrow(zes), replace=TRUE, prob=c(0.7,0.3))
+train  <- zes[sample, ]
+test   <- zes[!sample, ]
+
+m3 <- randomForest(rating ~ ., data=train, ntree=500, importance=TRUE, mtry=5, type="regression")
+m3 # r2 = .2885
+
+# 95% confidence interval
+tree_preds <- predict(m3, test, predict.all=TRUE)$individual
+alpha <- 0.05
+lower <- apply(tree_preds, 1, quantile, probs=alpha/2)
+upper <- apply(tree_preds, 1, quantile, probs=1-alpha/2)
+
+pm3 <- predict(m3, newdata=test, type="response")
+ci <- cbind(lower, pm3, upper)
+
+
+# checking if test$rating is within the confidence interval
+within_interval <- (test$rating >= ci[, 'lower']) & (test$rating <= ci[, 'upper'])
+sum(within_interval) / nrow(test)
+# accuracy = .9218
+
+```
+
